@@ -7,13 +7,15 @@ import (
 	"strings"
 	"fmt"
 	"log"
+	"bytes"
 )
 
 func main() {
 	path := os.Args[0]
-	args := strings.Join(os.Args[1:], " ")
+	args := os.Args[1:]
 	fileName := filepath.Base(path)
 	ext := filepath.Ext(path)
+	path = path[:strings.LastIndex(path, fileName)]
 	if ext != "" {
 		fileName = fileName[:strings.LastIndex(fileName, ext)]
 	}
@@ -21,15 +23,22 @@ func main() {
 	logFile, err := os.OpenFile(fileName + ".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer logFile.Close()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 	log.SetOutput(logFile)
 
-	out, err := exec.Command("./" + fileName + "_orig" + ext, args).Output()
-	log.Println(fileName + ext + " " + args)
+	var stdout, stderr bytes.Buffer
+
+	log.Println(fileName + ext + " " + strings.Join(args, " "))
+	cmd := exec.Command(filepath.Join(path, "original", fileName + ext), args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
 	if err != nil {
-		panic(err)
+		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
+		return
 	}
 
-	fmt.Println(string(out))
+	fmt.Print(stdout.String())
 }
